@@ -1,0 +1,61 @@
+# SVM
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.svm import LinearSVC
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load the data
+data = pd.read_csv("Twitter_Data.csv")
+
+# Drop rows with missing values
+data.dropna(subset=['sentiment', 'text'], inplace=True)
+
+# Split the data into training and testing sets
+train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
+
+# Vectorize the text data
+vectorizer = TfidfVectorizer()
+X_train_raw = vectorizer.fit_transform(train_data['text']) # feature extraction done on tweets and stored that matrix in X_train_raw
+y_train = train_data['sentiment'] # and the sentiment of it is as it is
+X_test_raw = vectorizer.transform(test_data['text'])
+y_test = test_data['sentiment']
+
+# Apply feature selection to the training and testing data seperately
+selector = SelectKBest(chi2, k=5000)
+selector.fit(X_train_raw, y_train) # feature selection on feature extracted matrix and sentiment labled data
+X_train = selector.transform(X_train_raw) # storde in X_train
+X_test = selector.transform(X_test_raw)
+
+# Train the SVM model
+clf = LinearSVC(max_iter=10000)
+clf.fit(X_train, y_train)
+
+# Use the trained model to make predictions on the test data
+y_pred = clf.predict(X_test)
+
+# Create a confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Plot the confusion matrix as a heatmap
+sns.heatmap(cm, annot=True, cmap='Blues', fmt='g')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
+
+# Evaluate the model
+accuracy = clf.score(X_test, y_test)
+print("Accuracy:", accuracy)
+
+# Calculate precision, recall, and F1 score
+report = classification_report(y_test, y_pred, output_dict=True)
+precision = report['weighted avg']['precision']
+recall = report['weighted avg']['recall']
+f1_score = report['weighted avg']['f1-score']
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1 Score:", f1_score)
